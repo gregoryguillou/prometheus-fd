@@ -11,7 +11,7 @@ import (
 func main() {
 	config, err := Parse()
 	if err != nil {
-		fmt.Println("error:", err)
+		fmt.Println("could not parse content, error:", err)
 		os.Exit(2)
 	}
 	g, ctx := errgroup.WithContext(context.Background())

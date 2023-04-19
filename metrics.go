@@ -68,11 +68,29 @@ func numberOfFiles(pid int64) (int, error) {
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
 		if r.MatchString(line) {
-			fmt.Println(line)
 			count++
 		}
 	}
 	return count, nil
+}
+
+// openFileMonitor
+func openFileMonitor(gaugevec *prometheus.GaugeVec, errorvec *prometheus.CounterVec, config *Config) {
+	log.Printf("match process with %s\n", config.Pattern)
+	pids, err := PIDs(config.Pattern)
+	if err != nil {
+		errorvec.With(config.Labels).Inc()
+	}
+	for _, pid := range pids {
+		log.Printf("match opened files with process pid:%d\n", pid)
+		i, err := numberOfFiles(pid)
+		if err != nil {
+			errorvec.With(config.Labels).Inc()
+		}
+		l := config.Labels
+		l["pid"] = fmt.Sprintf("%d", pid)
+		gaugevec.With(l).Set(float64(i))
+	}
 }
 
 // monitor
@@ -83,7 +101,7 @@ func monitor(ctx context.Context, cancel context.CancelFunc, config *Config) fun
 		labels = append(labels, label)
 	}
 
-	gaugevec := promauto.NewGaugeVec(prometheus.GaugeOpts{
+	openfilegaugevec := promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "process_open_files",
 		Help: "number of entries in the process fd directory",
 	}, append([]string{"pid"}, labels...))
@@ -95,25 +113,14 @@ func monitor(ctx context.Context, cancel context.CancelFunc, config *Config) fun
 
 	return func() error {
 		defer cancel()
+		v := make(chan bool, 1)
 		tick := time.NewTicker(60 * time.Second)
 		for {
 			select {
+			case <-v:
+				openFileMonitor(openfilegaugevec, errorvec, config)
 			case <-tick.C:
-				log.Printf("match process with %s\n", config.Pattern)
-				pids, err := PIDs(config.Pattern)
-				if err != nil {
-					errorvec.With(config.Labels).Inc()
-				}
-				for _, pid := range pids {
-					log.Printf("match opened files with %d\n", pid)
-					i, err := numberOfFiles(pid)
-					if err != nil {
-						errorvec.With(config.Labels).Inc()
-					}
-					l := config.Labels
-					l["pid"] = fmt.Sprintf("%d", pid)
-					gaugevec.With(l).Set(float64(i))
-				}
+				openFileMonitor(openfilegaugevec, errorvec, config)
 			case <-ctx.Done():
 				cancel()
 				return nil
