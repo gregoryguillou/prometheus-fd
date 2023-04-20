@@ -93,7 +93,7 @@ func (d *dataSet) openFileMonitor(gaugevec *prometheus.GaugeVec, errorvec *prome
 		if err != nil {
 			errorvec.With(config.Labels).Inc()
 		}
-		l := config.Labels
+		l := copyLabels(config.Labels)
 		l["pid"] = fmt.Sprintf("%d", pid)
 		gaugevec.With(l).Set(float64(i))
 	}
@@ -101,7 +101,7 @@ func (d *dataSet) openFileMonitor(gaugevec *prometheus.GaugeVec, errorvec *prome
 	// delete the gauge that hare not returned anymore
 	for pid := range d.capturedPIDs {
 		if !d.capturedPIDs[pid] {
-			l := config.Labels
+			l := copyLabels(config.Labels)
 			l["pid"] = fmt.Sprintf("%d", pid)
 			if gaugevec.Delete(l) {
 				log.Printf("delete gauge for pid %d", pid)

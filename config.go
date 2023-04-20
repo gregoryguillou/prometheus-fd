@@ -19,6 +19,14 @@ type Config struct {
 	Labels   prometheus.Labels
 }
 
+func copyLabels(in prometheus.Labels) prometheus.Labels {
+	out := prometheus.Labels{}
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
 func Parse() (*Config, error) {
 	listener := "0.0.0.0:2198"
 	pattern := "[b]idule"
