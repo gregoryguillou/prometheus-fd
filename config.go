@@ -14,9 +14,10 @@ type NamedValue struct {
 }
 
 type Config struct {
-	Listener string
-	Pattern  string
-	Labels   prometheus.Labels
+	Labels    prometheus.Labels
+	Listener  string
+	Pattern   string
+	Threshold int
 }
 
 func copyLabels(in prometheus.Labels) prometheus.Labels {
@@ -31,9 +32,11 @@ func Parse() (*Config, error) {
 	listener := "0.0.0.0:2198"
 	pattern := "[b]idule"
 	labels := "application:prometheus-fd"
+	threshold := 0
 	flag.StringVar(&listener, "listener", listener, "listener address")
 	flag.StringVar(&pattern, "pattern", pattern, "ps query pattern")
 	flag.StringVar(&labels, "labels", labels, "a list of key:value labels separated by commas")
+	flag.IntVar(&threshold, "kill-on-threshold", threshold, "send kill -9 when open files are above the threshold")
 	flag.Parse()
 	l := strings.Split(labels, ",")
 	prometheusLabels := prometheus.Labels{}
@@ -45,8 +48,9 @@ func Parse() (*Config, error) {
 		prometheusLabels[keyValue[0]] = keyValue[1]
 	}
 	return &Config{
-		Listener: listener,
-		Pattern:  pattern,
-		Labels:   prometheusLabels,
+		Labels:    prometheusLabels,
+		Listener:  listener,
+		Pattern:   pattern,
+		Threshold: threshold,
 	}, nil
 }

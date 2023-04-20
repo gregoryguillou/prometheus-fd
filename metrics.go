@@ -74,6 +74,16 @@ func numberOfFiles(pid int64) (int, error) {
 	return count, nil
 }
 
+func killOnThreshold(pid int64, threshold, numberOfFiles int) error {
+	if threshold == 0 || numberOfFiles < threshold {
+		return nil
+	}
+	cmd := exec.Command("kill", "-9", fmt.Sprintf("%d", pid))
+	out := bytes.NewBuffer([]byte(""))
+	cmd.Stdout = out
+	return cmd.Run()
+}
+
 type dataSet struct {
 	capturedPIDs map[int64]bool
 }
@@ -96,6 +106,10 @@ func (d *dataSet) openFileMonitor(gaugevec *prometheus.GaugeVec, errorvec *prome
 		l := copyLabels(config.Labels)
 		l["pid"] = fmt.Sprintf("%d", pid)
 		gaugevec.With(l).Set(float64(i))
+		err = killOnThreshold(pid, config.Threshold, i)
+		if err != nil {
+			errorvec.With(config.Labels).Inc()
+		}
 	}
 
 	// delete the gauge that hare not returned anymore
