@@ -36,8 +36,11 @@ func PIDs(pattern string) ([]int64, error) {
 	pids := []int64{}
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
+		if strings.Contains(line, "prometheus-fd") {
+			continue
+		}
 		if r.MatchString(line) {
-			pid := strings.Split(line, " ")[0]
+			pid := strings.Split(strings.TrimSpace(line), " ")[0]
 			p, err := strconv.ParseInt(pid, 10, 64)
 			if err != nil {
 				return nil, err
